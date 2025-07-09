@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Préparation AI-900</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .quiz-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 1.5rem;
+        }
+        .header img {
+            height: 60px;
+            margin-bottom: 1rem;
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            text-align: center;
+        }
+        .question-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .option-label {
+            display: block;
+            padding: 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .option-label:hover {
+            background-color: #f9fafb;
+        }
+        .option-input:checked + .option-label {
+            background-color: #e0f2fe;
+            border-color: #3b82f6;
+        }
+        .option-input {
+            display: none;
+        }
+        .correct {
+            background-color: #dcfce7 !important;
+            border-color: #22c55e !important;
+        }
+        .incorrect {
+            background-color: #fee2e2 !important;
+            border-color: #ef4444 !important;
+        }
+        .action-btn {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+            text-align: center;
+            border: none;
+        }
+        .action-btn:hover {
+            background-color: #2563eb;
+        }
+        .action-btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        .result-card {
+            padding: 2rem;
+            border-radius: 0.75rem;
+            text-align: center;
+        }
+        #welcome-screen input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="quiz-container">
+        <div class="header">
+            <img src="https://iteam-intranet.tn/moodle/pluginfile.php/1/theme_adaptable/logo/1746744125/logo-iteams.png" alt="Logo Iteam University" onerror="this.style.display='none'">
+            <h1>Préparation à la certification AI-900<br>Dr. Mohamed BEN ALI</h1>
+        </div>
+
+        <div id="welcome-screen">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-2">Bienvenue au Quiz AI-900</h2>
+            <p class="text-center text-gray-500 mb-6">Veuillez entrer votre nom complet pour commencer.</p>
+            <input type="text" id="student-name" placeholder="Votre nom et prénom">
+            <button id="start-button" class="action-btn" disabled>Commencer le Quiz</button>
+        </div>
+
+        <div id="quiz-app" class="hidden">
+            <div id="quiz-content">
+                <!-- Les questions seront injectées ici -->
+            </div>
+            <button id="submit-button" class="action-btn mt-4">Soumettre les réponses</button>
+            <div id="results-container" class="hidden mt-8"></div>
+        </div>
+    </div>
+    
+    <!-- Scripts Firebase -->
+    <script type="module">
+        // Import des fonctions Firebase nécessaires
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- ÉTAPE 1: Configuration de Firebase ---
+        // REMPLACEZ CE BLOC PAR VOTRE PROPRE CONFIGURATION FIREBASE
+        const firebaseConfig = {
+            apiKey: "VOTRE_API_KEY",
+            authDomain: "VOTRE_PROJECT_ID.firebaseapp.com",
+            projectId: "VOTRE_PROJECT_ID",
+            storageBucket: "VOTRE_PROJECT_ID.appspot.com",
+            messagingSenderId: "VOTRE_SENDER_ID",
+            appId: "VOTRE_APP_ID"
+        };
+        // -----------------------------------------
+
+        // Initialisation de Firebase
+        let app, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            console.log("Firebase initialisé avec succès.");
+        } catch (e) {
+            console.error("Erreur d'initialisation de Firebase. Vérifiez votre objet de configuration.", e);
+        }
+        
+        const quizData = [
+            // Module 1: Introduction à l'IA
+            { question: "Quel principe de l'IA responsable stipule que les systèmes d'IA doivent être compréhensibles ?", options: ["Équité", "Transparence", "Fiabilité et sécurité", "Inclusivité"], answer: "Transparence" },
+            { question: "Un concessionnaire automobile veut prédire le prix d'un véhicule d'occasion en fonction de sa marque, son modèle et son kilométrage. Quel type de machine learning doit-il utiliser ?", options: ["Classification", "Régression", "Clustering", "Détection d'anomalies"], answer: "Régression" },
+            { question: "Identifier des transactions bancaires frauduleuses en recherchant des écarts par rapport aux habitudes est un exemple de :", options: ["Classification", "Régression", "Détection d'anomalies", "Traitement du langage naturel"], answer: "Détection d'anomalies" },
+            { question: "Quel est le fondement de la plupart des solutions d'IA, basé sur des données et des statistiques pour créer des modèles prédictifs ?", options: ["Vision par ordinateur", "IA générative", "Machine Learning", "Exploration des connaissances"], answer: "Machine Learning" },
+            { question: "Un modèle d'approbation de prêt qui discrimine en fonction du genre à cause des données d'entraînement enfreint quel principe de l'IA responsable ?", options: ["Responsabilité", "Transparence", "Inclusivité", "Équité"], answer: "Équité" },
+            
+            // Module 2: Vision par Ordinateur
+            { question: "Quel service Azure AI Vision est spécifiquement conçu pour analyser les visages dans les images, mais avec des restrictions sur la reconnaissance faciale ?", options: ["Azure AI Vision", "Azure AI Face", "Azure AI Document Intelligence", "Azure AI Custom Vision"], answer: "Azure AI Face" },
+            { question: "La capacité de lire du texte imprimé et manuscrit à partir d'images est appelée :", options: ["Détection d'objets", "Reconnaissance Optique de Caractères (OCR)", "Analyse sémantique", "Classification d'images"], answer: "Reconnaissance Optique de Caractères (OCR)" },
+            { question: "Vous voulez créer un modèle capable de reconnaître des espèces spécifiques d'oiseaux. Quelle fonctionnalité d'Azure AI Vision serait la plus appropriée ?", options: ["Lire le texte dans les images", "Personnalisation des modèles (Custom Vision)", "Détecter des personnes", "Rognage intelligent"], answer: "Personnalisation des modèles (Custom Vision)" },
+            { question: "Pour utiliser plusieurs services Azure AI (comme Vision et Language) avec une seule clé et un seul point de terminaison, quel type de ressource devez-vous créer ?", options: ["Une ressource Vision", "Une ressource Language", "Une ressource Azure AI services", "Une ressource Machine Learning"], answer: "Une ressource Azure AI services" },
+            { question: "Dans le contexte de la vision par ordinateur, qu'est-ce qu'un réseau neuronal convolutif (CNN) ?", options: ["Un algorithme pour traduire du texte", "Un modèle de deep learning utilisé principalement pour analyser des images", "Un type de base de données pour stocker des pixels", "Un service pour générer des images"], answer: "Un modèle de deep learning utilisé principalement pour analyser des images" },
+
+            // Module 3: Traitement du Langage Naturel (NLP)
+            { question: "Quel service Azure AI permet de comprendre les intentions des utilisateurs à partir de phrases comme 'Allume la lumière' ?", options: ["Analyse de texte", "Réponses aux questions", "Compréhension du langage courant (CLU)", "Azure AI Speech"], answer: "Compréhension du langage courant (CLU)" },
+            { question: "La fonctionnalité qui identifie les points principaux dans un texte en extrayant des termes significatifs est appelée :", options: ["Analyse des sentiments", "Détection de la langue", "Extraction de phrases clés", "Reconnaissance d'entités nommées (NER)"], answer: "Extraction de phrases clés" },
+            { question: "Vous voulez créer un bot qui peut répondre aux questions des employés à partir d'un manuel existant. Quel service est le plus adapté ?", options: ["Azure AI Translator", "Réponses aux questions", "Azure AI Speech", "Analyse des sentiments"], answer: "Réponses aux questions" },
+            { question: "La conversion de texte écrit en parole audible est une fonctionnalité de quel service ?", options: ["Azure AI Language", "Azure AI Speech", "Azure AI Translator", "Azure AI Vision"], answer: "Azure AI Speech" },
+            { question: "Le processus de décomposition d'une phrase en mots ou sous-mots individuels s'appelle :", options: ["Vectorisation", "Lemmatisation", "Tokenisation", "Analyse syntaxique"], answer: "Tokenisation" },
+
+            // Module 4: Intelligence Documentaire et Exploration des Connaissances
+            { question: "Quel service Azure est conçu pour extraire du texte, des paires clé-valeur et des tables de documents comme des factures ou des reçus ?", options: ["Azure AI Vision (OCR)", "Azure AI Search", "Azure AI Document Intelligence", "Azure Machine Learning"], answer: "Azure AI Document Intelligence" },
+            { question: "Le processus qui consiste à ingérer des données, à les enrichir avec l'IA (par exemple, en extrayant des entités) et à les rendre consultables s'appelle :", options: ["Ingestion de données", "Exploration des connaissances", "Déploiement de modèle", "Classification de documents"], answer: "Exploration des connaissances" },
+            { question: "Dans Azure AI Search, qu'est-ce qu'un 'ensemble de compétences' (skillset) ?", options: ["Un ensemble de documents source", "L'index de recherche final", "Un ensemble d'opérations d'enrichissement par IA à appliquer aux données", "Une application cliente qui interroge l'index"], answer: "Un ensemble d'opérations d'enrichissement par IA à appliquer aux données" },
+            { question: "Pour entraîner un modèle personnalisé dans Document Intelligence, quel est le nombre minimum d'exemples de documents que vous devez fournir ?", options: ["1", "5", "20", "100"], answer: "5" },
+            { question: "Quelle est la principale fonction d'Azure AI Search ?", options: ["Entraîner des modèles de machine learning", "Fournir une plateforme pour l'exploration de données à grande échelle sur du contenu hétérogène", "Traduire des documents dans plusieurs langues", "Générer des descriptions pour des images"], answer: "Fournir une plateforme pour l'exploration de données à grande échelle sur du contenu hétérogène" },
+            
+            // Module 5: IA Générative
+            { question: "Comment appelle-t-on un modèle de langage entraîné sur de vastes quantités de données textuelles, comme les modèles GPT ?", options: ["Petit modèle de langage (SLM)", "Modèle de classification", "Grand modèle de langage (LLM)", "Modèle de régression"], answer: "Grand modèle de langage (LLM)" },
+            { question: "Quelle plateforme Azure est un environnement de développement pro-code pour explorer, créer, tester et déployer des solutions d'IA, y compris des modèles génératifs ?", options: ["Azure Machine Learning Studio", "Azure AI Studio", "Copilot Studio", "Visual Studio Code"], answer: "Azure AI Studio" },
+            { question: "Le processus qui consiste à fournir à un modèle génératif vos propres données pour améliorer la pertinence de ses réponses s'appelle :", options: ["Génération Augmentée par la Récupération (RAG)", "Ingénierie des prompts", "Filtrage de contenu", "Déploiement de modèle"], answer: "Génération Augmentée par la Récupération (RAG)" },
+            { question: "Quel outil Microsoft est principalement destiné au développement low-code de copilotes et de plug-ins ?", options: ["Azure AI Studio", "GitHub Copilot", "Copilot Studio", "Power Automate"], answer: "Copilot Studio" },
+            { question: "Quelle est la première étape du traitement du texte par un modèle de langage, qui consiste à le décomposer en jetons ?", options: ["Incorporation (Embedding)", "Attention", "Tokenisation", "Classification"], answer: "Tokenisation" },
+
+            // Questions d'analyse de graphiques
+            { question: "Vous évaluez un modèle de classification binaire. La matrice de confusion montre : Vrais Positifs=90, Faux Négatifs=10, Vrais Négatifs=95, Faux Positifs=5. Combien y a-t-il d'observations positives réelles au total ?", options: ["95", "100", "105", "190"], answer: "100" },
+            { question: "En utilisant la même matrice de confusion (VP=90, FN=10, VN=95, FP=5), quelle est la précision (accuracy) du modèle ?", options: ["90%", "92.5%", "95%", "97.5%"], answer: "92.5%" },
+            { question: "Un graphique 'Predicted vs. True' pour un modèle de régression montre que les points sont étroitement regroupés autour d'une ligne diagonale parfaite. Qu'est-ce que cela indique ?", options: ["Le modèle a une faible précision.", "Le modèle est très performant et ses prédictions sont proches des valeurs réelles.", "Le modèle est un modèle de classification.", "Les données d'entraînement ne sont pas normalisées."], answer: "Le modèle est très performant et ses prédictions sont proches des valeurs réelles." },
+            { question: "Dans une matrice de confusion, que représente un 'Faux Négatif' ?", options: ["Le modèle a prédit 'non' alors que la réponse correcte était 'oui'.", "Le modèle a prédit 'oui' alors que la réponse correcte était 'non'.", "Le modèle a correctement prédit 'non'.", "Le modèle a correctement prédit 'oui'."], answer: "Le modèle a prédit 'non' alors que la réponse correcte était 'oui'." },
+            { question: "Quel type de machine learning est évalué à l'aide d'une matrice de confusion ?", options: ["Régression", "Clustering", "Classification", "Prévision"], answer: "Classification" }
+        ];
+
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const quizApp = document.getElementById('quiz-app');
+        const studentNameInput = document.getElementById('student-name');
+        const startButton = document.getElementById('start-button');
+        
+        const quizContent = document.getElementById('quiz-content');
+        const submitButton = document.getElementById('submit-button');
+        const resultsContainer = document.getElementById('results-container');
+        let studentName = '';
+
+        studentNameInput.addEventListener('input', () => {
+            startButton.disabled = studentNameInput.value.trim() === '';
+        });
+
+        startButton.addEventListener('click', () => {
+            studentName = studentNameInput.value.trim();
+            if (studentName) {
+                welcomeScreen.classList.add('hidden');
+                quizApp.classList.remove('hidden');
+                buildQuiz();
+            }
+        });
+
+        function buildQuiz() {
+            const shuffledQuestions = quizData.sort(() => Math.random() - 0.5);
+            
+            shuffledQuestions.forEach((currentQuestion, questionIndex) => {
+                const optionsHtml = currentQuestion.options.map((option, optionIndex) => `
+                    <div>
+                        <input type="radio" name="question${questionIndex}" id="q${questionIndex}o${optionIndex}" value="${option}" class="option-input">
+                        <label for="q${questionIndex}o${optionIndex}" class="option-label">${option}</label>
+                    </div>
+                `).join('');
+
+                const questionHtml = `
+                    <div class="question-card" data-question-index="${questionIndex}">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">${questionIndex + 1}. ${currentQuestion.question}</h3>
+                        <div class="options-container">${optionsHtml}</div>
+                    </div>
+                `;
+                quizContent.innerHTML += questionHtml;
+            });
+        }
+
+        async function showResults() {
+            submitButton.disabled = true;
+            submitButton.textContent = "Correction en cours...";
+            let score = 0;
+            const shuffledQuestions = quizData;
+
+            shuffledQuestions.forEach((currentQuestion, questionIndex) => {
+                const questionCard = quizContent.querySelector(`.question-card[data-question-index="${questionIndex}"]`);
+                const optionsContainer = questionCard.querySelector('.options-container');
+                const selectedOption = optionsContainer.querySelector(`input[name="question${questionIndex}"]:checked`);
+                
+                const allOptions = optionsContainer.querySelectorAll('input');
+                allOptions.forEach(opt => opt.disabled = true);
+
+                const correctOptionInput = Array.from(allOptions).find(input => input.value === currentQuestion.answer);
+
+                if (selectedOption) {
+                    const userAnswer = selectedOption.value;
+                    const selectedLabel = selectedOption.nextElementSibling;
+
+                    if (userAnswer === currentQuestion.answer) {
+                        score++;
+                        selectedLabel.classList.add('correct');
+                    } else {
+                        selectedLabel.classList.add('incorrect');
+                        if(correctOptionInput) {
+                           correctOptionInput.nextElementSibling.classList.add('correct');
+                        }
+                    }
+                } else {
+                     if(correctOptionInput) {
+                        correctOptionInput.nextElementSibling.classList.add('correct');
+                     }
+                }
+            });
+
+            const percentage = Math.round((score / shuffledQuestions.length) * 100);
+            
+            // --- ÉTAPE 2: Enregistrement des résultats dans Firebase ---
+            if (db) {
+                try {
+                    await addDoc(collection(db, "quizResults"), {
+                        studentName: studentName,
+                        score: score,
+                        totalQuestions: shuffledQuestions.length,
+                        percentage: percentage,
+                        submittedAt: serverTimestamp()
+                    });
+                    console.log("Résultats enregistrés avec succès dans Firebase.");
+                } catch (e) {
+                    console.error("Erreur lors de l'enregistrement dans Firebase: ", e);
+                    alert("Attention : Impossible d'enregistrer vos résultats. Veuillez faire une capture d'écran.");
+                }
+            } else {
+                 alert("Attention : La connexion à la base de données a échoué. Veuillez faire une capture d'écran de vos résultats.");
+            }
+            // --------------------------------------------------------
+
+            let resultMessage = '';
+            let resultColorClass = '';
+
+            if (percentage >= 80) {
+                resultMessage = "Excellent travail !";
+                resultColorClass = 'bg-green-100 text-green-800';
+            } else if (percentage >= 50) {
+                resultMessage = "Pas mal, mais vous pouvez vous améliorer.";
+                resultColorClass = 'bg-yellow-100 text-yellow-800';
+            } else {
+                resultMessage = "Vous devriez peut-être réviser un peu plus.";
+                resultColorClass = 'bg-red-100 text-red-800';
+            }
+
+            resultsContainer.innerHTML = `
+                <div class="result-card ${resultColorClass}">
+                    <h2 class="text-2xl font-bold mb-2">Résultats pour ${studentName}</h2>
+                    <p class="text-3xl font-bold my-4">${score} / ${shuffledQuestions.length}</p>
+                    <p class="text-xl font-semibold mb-4">(${percentage}%)</p>
+                    <p class="text-lg">${resultMessage}</p>
+                </div>
+            `;
+            resultsContainer.classList.remove('hidden');
+            submitButton.style.display = 'none';
+        }
+
+        submitButton.addEventListener('click', showResults);
+    </script>
+</body>
+</html>
