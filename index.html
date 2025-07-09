@@ -135,7 +135,8 @@
         import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- ÉTAPE 1: Configuration de Firebase ---
-        // REMPLACEZ CE BLOC PAR VOTRE PROPRE CONFIGURATION FIREBASE
+        // REMPLACEZ CE BLOC PAR VOTRE PROPRE CONFIGURATION FIREBASE OBTENUE DEPUIS VOTRE PROJET
+        // Tant que ce n'est pas fait, les scores s'afficheront mais ne seront pas sauvegardés.
         const firebaseConfig = {
             apiKey: "VOTRE_API_KEY",
             authDomain: "VOTRE_PROJECT_ID.firebaseapp.com",
@@ -148,10 +149,17 @@
 
         // Initialisation de Firebase
         let app, db;
+        // Ce bloc essaie d'initialiser Firebase. S'il échoue (à cause de mauvaises clés),
+        // db restera non défini, et le quiz fonctionnera sans sauvegarde.
         try {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            console.log("Firebase initialisé avec succès.");
+            // Vérification simple pour s'assurer que les clés ne sont plus des placeholders
+            if (firebaseConfig.apiKey !== "VOTRE_API_KEY") {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                console.log("Firebase initialisé avec succès.");
+            } else {
+                console.warn("Configuration Firebase non détectée. Les scores ne seront pas sauvegardés.");
+            }
         } catch (e) {
             console.error("Erreur d'initialisation de Firebase. Vérifiez votre objet de configuration.", e);
         }
@@ -209,6 +217,7 @@
         const submitButton = document.getElementById('submit-button');
         const resultsContainer = document.getElementById('results-container');
         let studentName = '';
+        let shuffledQuestions = []; // Garder une référence stable aux questions mélangées
 
         studentNameInput.addEventListener('input', () => {
             startButton.disabled = studentNameInput.value.trim() === '';
@@ -224,7 +233,8 @@
         });
 
         function buildQuiz() {
-            const shuffledQuestions = quizData.sort(() => Math.random() - 0.5);
+            // Créer une copie mélangée et la stocker
+            shuffledQuestions = [...quizData].sort(() => Math.random() - 0.5);
             
             shuffledQuestions.forEach((currentQuestion, questionIndex) => {
                 const optionsHtml = currentQuestion.options.map((option, optionIndex) => `
@@ -248,8 +258,8 @@
             submitButton.disabled = true;
             submitButton.textContent = "Correction en cours...";
             let score = 0;
-            const shuffledQuestions = quizData;
-
+            
+            // Utiliser le tableau mélangé stocké pour la vérification
             shuffledQuestions.forEach((currentQuestion, questionIndex) => {
                 const questionCard = quizContent.querySelector(`.question-card[data-question-index="${questionIndex}"]`);
                 const optionsContainer = questionCard.querySelector('.options-container');
@@ -282,25 +292,7 @@
 
             const percentage = Math.round((score / shuffledQuestions.length) * 100);
             
-            // --- ÉTAPE 2: Enregistrement des résultats dans Firebase ---
-            if (db) {
-                try {
-                    await addDoc(collection(db, "quizResults"), {
-                        studentName: studentName,
-                        score: score,
-                        totalQuestions: shuffledQuestions.length,
-                        percentage: percentage,
-                        submittedAt: serverTimestamp()
-                    });
-                    console.log("Résultats enregistrés avec succès dans Firebase.");
-                } catch (e) {
-                    console.error("Erreur lors de l'enregistrement dans Firebase: ", e);
-                    alert("Attention : Impossible d'enregistrer vos résultats. Veuillez faire une capture d'écran.");
-                }
-            } else {
-                 alert("Attention : La connexion à la base de données a échoué. Veuillez faire une capture d'écran de vos résultats.");
-            }
-            // --------------------------------------------------------
+            // **CORRECTION PRINCIPALE : AFFICHER LES RÉSULTATS AVANT DE TENTER D'ENREGISTRER**
 
             let resultMessage = '';
             let resultColorClass = '';
@@ -326,6 +318,24 @@
             `;
             resultsContainer.classList.remove('hidden');
             submitButton.style.display = 'none';
+
+            // --- Tenter d'enregistrer les résultats dans Firebase en arrière-plan ---
+            if (db) {
+                try {
+                    await addDoc(collection(db, "quizResults"), {
+                        studentName: studentName,
+                        score: score,
+                        totalQuestions: shuffledQuestions.length,
+                        percentage: percentage,
+                        submittedAt: serverTimestamp()
+                    });
+                    console.log("Résultats enregistrés avec succès dans Firebase.");
+                } catch (e) {
+                    console.error("Erreur lors de l'enregistrement dans Firebase: ", e);
+                    // Pas de 'alert' pour ne pas bloquer l'utilisateur. L'erreur est visible dans la console.
+                }
+            }
+            // --------------------------------------------------------------------
         }
 
         submitButton.addEventListener('click', showResults);
